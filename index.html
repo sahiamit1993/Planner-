@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2563eb">
+<link rel="manifest" href="manifest.json">
+<title>Today Planner</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#f6f7fb;color:#111827}
+main{max-width:560px;margin:auto;padding:18px 14px 32px}.top{display:flex;justify-content:space-between;align-items:end;margin-bottom:14px}
+h1{font-size:27px;margin:2px 0}.muted{color:#6b7280;font-size:13px}.card{background:white;border:1px solid #e5e7eb;border-radius:18px;padding:15px;margin:12px 0}
+input,select,textarea,button{font:inherit}input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:11px;background:white}
+button{border:0;border-radius:11px;padding:12px 15px;font-weight:700}.primary{background:#2563eb;color:white;width:100%}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.task{display:flex;align-items:center;gap:9px;padding:11px 0;border-bottom:1px solid #eee}.task:last-child{border:0}
+.task input{width:20px;height:20px}.task.done .name{text-decoration:line-through;color:#9ca3af}.name{flex:1}
+.badge{font-size:11px;padding:4px 7px;border-radius:999px;background:#eef2ff}.bar{height:9px;background:#e5e7eb;border-radius:99px;overflow:hidden}.fill{height:100%;background:#2563eb;width:0}
+.smallbtn{background:#f3f4f6;padding:8px 10px;font-size:12px}.focus{font-weight:650;padding:9px 0}
+@media(max-width:380px){h1{font-size:24px}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<div class="top">
+<div><div class="muted" id="date"></div><h1>What should I do today?</h1></div>
+<div class="muted" id="pct">0%</div>
+</div>
+
+<div class="card">
+<strong>Today's top priorities</strong>
+<div id="focus" class="muted" style="margin-top:7px">Add tasks below.</div>
+</div>
+
+<div class="card">
+<strong>Add a task</strong>
+<form id="form" style="margin-top:10px">
+<input id="task" placeholder="e.g. Finish Tableau dashboard" required>
+<div class="grid" style="margin-top:9px">
+<select id="cat"><option>Work</option><option>Career</option><option>Learning</option><option>Freelancing</option><option>Personal</option><option>Admin</option></select>
+<select id="priority"><option value="1">High</option><option value="2" selected>Medium</option><option value="3">Low</option></select>
+</div>
+<button class="primary" style="margin-top:9px">+ Add task</button>
+</form>
+</div>
+
+<div class="card">
+<div style="display:flex;justify-content:space-between;align-items:center"><strong>My day</strong><button class="smallbtn" id="clear">Clear completed</button></div>
+<div id="list"></div>
+</div>
+
+<div class="card">
+<strong>Time blocks</strong>
+<div class="grid" style="margin-top:10px">
+<label class="muted">Morning<input id="morning" placeholder="Main focus"></label>
+<label class="muted">Afternoon<input id="afternoon" placeholder="Main focus"></label>
+<label class="muted">Evening<input id="evening" placeholder="Learning"></label>
+<label class="muted">Before sleep<input id="tomorrow" placeholder="Plan tomorrow"></label>
+</div>
+</div>
+
+<div class="card">
+<strong>Progress</strong>
+<div class="bar" style="margin-top:10px"><div class="fill" id="fill"></div></div>
+<div class="muted" id="summary" style="margin-top:7px">0 of 0 completed</div>
+</div>
+
+<div class="card">
+<strong>End-of-day review</strong>
+<textarea id="notes" rows="4" placeholder="What went well? What moves to tomorrow?" style="margin-top:9px"></textarea>
+</div>
+</main>
+<script>
+const KEY="todayPlannerV1";
+let state=JSON.parse(localStorage.getItem(KEY)||'{"tasks":[],"blocks":{},"notes":""}');
+const $=id=>document.getElementById(id);
+$("date").textContent=new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+function save(){localStorage.setItem(KEY,JSON.stringify(state))}
+function render(){
+ const list=$("list"); list.innerHTML="";
+ state.tasks.forEach((t,i)=>{
+  const row=document.createElement("div"); row.className="task"+(t.done?" done":"");
+  const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=t.done;
+  cb.onchange=()=>{t.done=cb.checked;save();render()};
+  const name=document.createElement("span");name.className="name";name.textContent=t.text;
+  const badge=document.createElement("span");badge.className="badge";badge.textContent=t.priority===1?"HIGH":t.priority===2?"MED":"LOW";
+  row.append(cb,name,badge);list.append(row);
+ });
+ const active=state.tasks.filter(t=>!t.done).sort((a,b)=>a.priority-b.priority).slice(0,3);
+ $("focus").innerHTML=active.length?active.map(t=>`<div class="focus">→ ${escapeHtml(t.text)}</div>`).join(""):"All done — or add your first task.";
+ const done=state.tasks.filter(t=>t.done).length,total=state.tasks.length,p=total?Math.round(done/total*100):0;
+ $("pct").textContent=p+"%";$("fill").style.width=p+"%";$("summary").textContent=`${done} of ${total} completed`;
+}
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+$("form").onsubmit=e=>{e.preventDefault();state.tasks.push({text:$("task").value.trim(),category:$("cat").value,priority:+$("priority").value,done:false});$("task").value="";save();render()};
+$("clear").onclick=()=>{state.tasks=state.tasks.filter(t=>!t.done);save();render()};
+["morning","afternoon","evening","tomorrow"].forEach(id=>{ $(id).value=state.blocks[id]||""; $(id).oninput=()=>{state.blocks[id]=$(id).value;save()}});
+$("notes").value=state.notes||"";$("notes").oninput=()=>{state.notes=$("notes").value;save()};
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
+render();
+</script>
+</body>
+</html>

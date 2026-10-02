@@ -1,0 +1,10 @@
+{
+  "name":"Today Planner",
+  "short_name":"Planner",
+  "start_url":"./index.html",
+  "display":"standalone",
+  "background_color":"#f6f7fb",
+  "theme_color":"#2563eb",
+  "description":"A simple daily planner for tasks, priorities and time blocks.",
+  "icons":[]
+}
